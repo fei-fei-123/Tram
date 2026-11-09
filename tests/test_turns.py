@@ -35,7 +35,7 @@ def test_one_running_turn_per_session(app, monkeypatch):
     app.messages.append(s["id"], "user", "hi")
     conflict = {}
 
-    def fake_run(ctx, filters=(), turn_id=None):
+    def fake_run(ctx, filters=(), provider=None, turn_id=None):
         try:
             app.turns.start(s["id"])  # 链运行中同会话再拉一轮 → 必须被拒
             conflict["seen"] = False
@@ -53,7 +53,7 @@ def test_failed_turn(app, recorder, monkeypatch):
     s = app.sessions.create()
     app.messages.append(s["id"], "user", "hi")
 
-    def boom(ctx, filters=(), turn_id=None):
+    def boom(ctx, filters=(), provider=None, turn_id=None):
         raise RuntimeError("engine down")
 
     monkeypatch.setattr(app.engine, "run", boom)
@@ -65,7 +65,7 @@ def test_failed_turn(app, recorder, monkeypatch):
     assert [m["role"] for m in app.messages.list(s["id"])] == ["user"]  # 失败不落 agent 消息
 
     # running 已清理：下一轮可正常开
-    monkeypatch.setattr(app.engine, "run", lambda ctx, filters=(), turn_id=None: ("ok", "trace_t"))
+    monkeypatch.setattr(app.engine, "run", lambda ctx, filters=(), provider=None, turn_id=None: ("ok", "trace_t"))
     assert app.turns.start(s["id"])["status"] == "done"
 
 
@@ -73,7 +73,7 @@ def test_cancel_during_run_discards_output(app, recorder, monkeypatch):
     s = app.sessions.create()
     app.messages.append(s["id"], "user", "hi")
 
-    def fake_run(ctx, filters=(), turn_id=None):
+    def fake_run(ctx, filters=(), provider=None, turn_id=None):
         app.turns.cancel(s["id"])  # 链运行途中取消
         return "late", "trace_cancel"
 

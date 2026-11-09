@@ -54,7 +54,9 @@ class TurnService:
         }
         try:
             filters = self._plugins.chain_filters() if self._plugins else []
-            content, trace_id = self._engine.run(ctx, filters=filters, turn_id=turn["id"])
+            provider = self._plugins.provider() if self._plugins else None
+            content, trace_id = self._engine.run(ctx, filters=filters, provider=provider,
+                                                 turn_id=turn["id"])
             turn["trace_id"] = trace_id
         except Exception:
             turn["status"] = "failed"

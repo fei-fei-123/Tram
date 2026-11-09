@@ -89,12 +89,13 @@ class UiPort:
 
 
 class AgentPort:
-    """触达宿主 agent 能力：插件改「消息/会话」的三条合法路径入口都在这。"""
+    """触达宿主 agent 能力：插件改「消息/会话」的三条合法路径入口＋模型运行时上交口。"""
 
-    def __init__(self, plugin_id, filters_reg, services, tracker):
+    def __init__(self, plugin_id, filters_reg, provider_slot, services, tracker):
         self._plugin_id = plugin_id
-        self._filters = filters_reg  # {"pre": [...], "post": [...]}，manager 持有
-        self._services = services    # callable -> namespace(.messages/.turns)，装配后期绑定
+        self._filters = filters_reg        # 插件贡献滤器列表，manager 持有
+        self._provider_slot = provider_slot  # 单槽 [provider] 或空，manager 持有
+        self._services = services          # callable -> namespace(.messages/.turns)，装配后期绑定
         self._tracker = tracker
 
     def add_filter(self, fn):
@@ -106,6 +107,21 @@ class AgentPort:
         def _remove():
             if fn in bucket:
                 bucket.remove(fn)
+
+        handle = Handle(_remove)
+        self._tracker.add(handle)
+        return handle
+
+    def add_provider(self, provider):
+        """把本插件的模型运行时上交宿主：配置自管（manifest），宿主只包一层做逐轮 trace。
+        滤器从 chain.deps.config.provider 取用；单槽，后上交替前。"""
+        slot = self._provider_slot
+        slot.clear()
+        slot.append(provider)
+
+        def _remove():
+            if slot and slot[0] is provider:
+                slot.clear()
 
         handle = Handle(_remove)
         self._tracker.add(handle)

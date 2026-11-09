@@ -8,7 +8,6 @@ from types import SimpleNamespace
 
 from engine import Engine
 
-from .config import load_engine_config
 from .events import EventBus
 from .plugins.manager import PluginManager
 from .services.messages import MessageService
@@ -35,9 +34,6 @@ def build_app(data_dir, plugins_root=None, engine_config=None):
     app = App()
     db = Database(data_dir / "tram.db")
     bus = EventBus()
-    # 引擎配置：显式传参优先，否则读仓库根 config.json
-    if engine_config is None:
-        engine_config = load_engine_config(_REPO_ROOT / "config.json")
     engine = Engine(data_dir / "traces" / "trace.jsonl", config=engine_config)
     sessions = SessionService(bus, db)
     messages = MessageService(bus, db)

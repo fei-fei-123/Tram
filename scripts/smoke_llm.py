@@ -15,10 +15,11 @@ from host.app import build_app
 def main():
     prompt = sys.argv[1] if len(sys.argv) > 1 else "用一句话自我介绍，不要思考过程"
     data_dir = Path(tempfile.mkdtemp(prefix="tram_smoke_"))
-    app = build_app(data_dir)  # 缺省读仓库 config.json → 真模型
+    app = build_app(data_dir)  # 缺省扫插件仓；llm 插件自管配置
     try:
-        if app.engine._config.get("provider") is None:
-            print("没读到 provider：先写好仓库根 config.json")
+        app.start()
+        if app.plugins.provider() is None:
+            print("没有 provider：先配好 plugins/llm/manifest.json")
             return 1
         sess = app.sessions.create("冒烟")
         app.messages.append(sess["id"], "user", prompt)

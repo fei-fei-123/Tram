@@ -11,7 +11,7 @@
 ```
 host/     宿主层：EventBus、SQLite 存储、Session/Message/Turn 三服务、插件体系（base/context/manager）、装配根 app.py
 engine/   引擎层：chain（doFilter 递归＋装配）、trace（jsonl，逐轮请求/响应）、filters/（echo｜llm）、providers（OpenAI 兼容适配器）
-plugins/  插件仓（hello：三条改动路径示范）
+plugins/  插件仓（hello：洋葱示范＋三条路径；llm：智能环，配置自管）
 tests/    pytest
 ```
 
@@ -28,13 +28,18 @@ python -m pytest
 
 ## 接真模型
 
-仓库根 `config.json`（build_app 缺省读取；测试固定离线不读它）：
+LLM 是插件：`plugins/llm/`，**配置自管**在 `plugins/llm/manifest.json` 的 config 节（含 key，已 gitignore；入库示例见 `manifest.example.json`，装插件时照它填）：
 
 ```json
 {
-  "filters": ["llm"],
-  "provider": { "base_url": "https://…/v1", "model": "…", "api_key": "…", "timeout": 120 }
+  "id": "llm",
+  "config": {
+    "base_url": "https://…/v1",
+    "model": "…",
+    "api_key": "本地填",
+    "timeout": 120
+  }
 }
 ```
 
-注意 base_url 要带 `/v1`（适配器只补 `/chat/completions`）。冒烟：`python scripts\smoke_llm.py [提示词]`。若建仓，config.json 含 key，须进 .gitignore。
+插件 on_start 自造 provider，经 `agent.add_provider` 上交宿主槽位（引擎只包一层做逐轮 trace，不碰配置值）；本体滤器经 `add_filter` 进列表。base_url 要带 `/v1`（适配器只补 `/chat/completions`）。冒烟：`python scripts\smoke_llm.py [提示词]`。

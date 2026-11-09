@@ -19,7 +19,8 @@ class Engine:
     """引擎门面：装配单一有序列表 → 跑链 → 写 trace。
 
     列表＝贡献段（插件 add_filter 只追加，注册序即运行序）＋核心段
-    （实例配置 filters：滤器函数直接进列表，零注册表；缺省 echo）。
+    （实例配置 filters：滤器函数直接进列表，零注册表；缺省空）。
+    provider 由插件 add_provider 上交，本层只包一层做逐轮 trace。
     deps ＝ { config, store }：实例私有，经 chain.deps 对滤器可见（签名永不再扩）。
     """
 
@@ -28,11 +29,10 @@ class Engine:
         self._config = dict(config or {})
         self.deps = {"config": self._config, "store": {}}  # store 活过单次运行
 
-    def run(self, ctx, filters=(), turn_id=None):
+    def run(self, ctx, filters=(), provider=None, turn_id=None):
         # 本轮 trace id：各行共用
         trace_id = f"trace_{uuid.uuid4().hex}"
         # provider 包一层，逐轮请求/响应落 trace
-        provider = self._config.get("provider")
         traced = None
         if provider is not None:
             traced = _TracedProvider(provider, self._tracer, trace_id, turn_id)
@@ -55,8 +55,8 @@ class Engine:
         return content, trace_id
 
     def _core_filters(self):
-        # 实例配置列表：滤器函数直接进列表，缺省 echo
-        return self._config.get("filters") or (echo,)
+        # 实例配置列表：滤器函数直接进列表；缺省空——功能滤器由插件贡献
+        return self._config.get("filters") or ()
 
 
 class _TracedProvider:
