@@ -1,0 +1,16 @@
+{
+  "id": "hello",
+  "name": "hello",
+  "version": "0.2.0",
+  "description": "A 阶段示范插件：洋葱滤器（下沉注入→交棒→上浮加时间戳）＋轮后改记录＋主动发言",
+  "entry": "plugin.py",
+  "anchors": [],
+  "events": ["turn.finished"],
+  "config": {
+    "inject_suffix": " ·hello-sink",
+    "stamp_tag": "hello-onion",
+    "review_suffix": " [hello-edit]",
+    "greet": true,
+    "greet_text": "hello 插件：本轮处理完毕"
+  }
+}
