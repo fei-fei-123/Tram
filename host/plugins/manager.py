@@ -42,7 +42,7 @@ class PluginManager:
         self._services = services  # callable -> namespace(.messages/.turns)
         self._stores_dir = pathlib.Path(stores_dir)
         self._plugins = {}              # id -> _Loaded
-        self._filters = []               # 插件贡献的滤器，注册序追加
+        self._filters = []               # [(plugin_id, fn)] 插件贡献滤器，注册序追加
         self._provider_slot = []         # 单槽：当前上交的 provider（空即无）
         self._ui_cards = []
         self._statuses = {}
@@ -62,7 +62,11 @@ class PluginManager:
 
     def chain_filters(self):
         """宿主（TurnService）取插件贡献的滤器（注册序；引擎装配为单一有序列表）。"""
-        return list(self._filters)
+        return [fn for _, fn in self._filters]
+
+    def chain_filter_specs(self):
+        """调试口：贡献段名单 [(plugin_id, 滤器名)]，print_chain 用。"""
+        return [(pid, getattr(fn, "__name__", repr(fn))) for pid, fn in self._filters]
 
     def provider(self):
         """当前上交的模型运行时（llm 插件 add_provider 放进来），无则 None。"""

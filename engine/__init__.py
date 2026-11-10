@@ -41,7 +41,7 @@ class Engine:
         if traced is not None:
             run_config["provider"] = traced
         deps = {"config": run_config, "store": self.deps["store"]}
-        chain = assemble([*filters, *self._core_filters()], deps)
+        chain = assemble([*filters, *self.core_filters()], deps)
         chain.doFilter(ctx)
         content = ctx.get("content")
         # 收尾 run 行
@@ -54,7 +54,7 @@ class Engine:
         }, trace_id=trace_id)
         return content, trace_id
 
-    def _core_filters(self):
+    def core_filters(self):
         # 实例配置列表：滤器函数直接进列表；缺省空——功能滤器由插件贡献
         return self._config.get("filters") or ()
 

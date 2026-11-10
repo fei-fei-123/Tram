@@ -102,11 +102,11 @@ class AgentPort:
         """路径 1（引擎层）：注册滤器（裸函数 filter(ctx, chain)）。
         单签名只追加：注册序即运行序；位置需求将来走实例配置列表。"""
         bucket = self._filters
-        bucket.append(fn)
+        bucket.append((self._plugin_id, fn))
 
         def _remove():
-            if fn in bucket:
-                bucket.remove(fn)
+            if (self._plugin_id, fn) in bucket:
+                bucket.remove((self._plugin_id, fn))
 
         handle = Handle(_remove)
         self._tracker.add(handle)
