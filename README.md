@@ -1,45 +1,39 @@
-# Tram 宿主页
+# Tram
 
-拓扑驱动 Agent 框架 **Tram** 的宿主页：**宿主层**（服务＋插件体系＋页面）内嵌**引擎层**（滤器链）。
+可插拔的插件式 Agent 框架：**事件即链，链即洋葱；插件是带生命周期的行为参与者，模型只是链上负责"智能"的一站。**
 
-- 引擎规范：`D:\project\文档仓库\学习\Agent\Tram\形态.md`（机制白清单四件：doFilter 递归 / 列表装配 / deps 口子 / trace 写入）
-- 域模型词表：`docs/域模型.md`（新概念必须先按四栏补进文档再写代码）
-- 技术栈：`docs/技术栈.md`
+本仓库为框架实现仓。设计文档位于 `D:\project\文档仓库\学习\Agent\Tram\`：
 
-## 布局
+| 文档 | 内容 |
+|---|---|
+| 设计总览.md | 面向评审的整体设计与可行性（新人从这里读） |
+| 术语说明.md | 回复 / 轮次 / ctx / 插件链 词表 |
+| 架构说明.md | 三层架构：engine 程序层 / host 通信层 / plugin 插件层 |
+| 流程控制.md | 一条回复的完整流程、申请续轮、轮次上限、缓冲送达 |
+| 生命周期.md | 会话级与插件级生命周期、中断与异常语义 |
+| 插件链.md | 插件装配、清单格式、方法注册、执行与门控 |
+| 上下文设计.md | ctx 信封（待整理） |
 
-```
-host/     宿主层：EventBus、SQLite 存储、Session/Message/Turn 三服务、插件体系（base/context/manager）、装配根 app.py
-engine/   引擎层：chain（doFilter 递归＋装配）、trace（jsonl，逐轮请求/响应）、filters/（echo｜llm）、providers（OpenAI 兼容适配器）
-plugins/  插件仓（hello：洋葱示范＋三条路径；llm：智能环，配置自管）
-tests/    pytest
-```
-
-命名纪律：业务说 slot，代码说 filter（docs/域模型.md「词表映射」节）。
-
-## 阶段
-
-- **A**：EventBus ＋ Session/Message/Turn 三服务（引擎 stub 为 echo）＋ PluginManager ＋ hello 插件，pytest 全绿。
-- **B**：llm 滤器（provider 外置，作为普通成员进列表）＋ trace 升格（必记 LLM 视图＋逐轮请求/响应）。Case 1 验收：请求原样回、trace 多一行。接真模型：`build_app(data_dir, engine_config={"filters": [llm], "provider": OpenAICompatProvider(...)})`。
+## 仓库结构
 
 ```
-python -m pytest
+engine/   程序层：会话管理、生命周期编排、用户相关操作
+host/     通信层：插件链装配与执行、消息与轮次控制、归组注册表、操作日志（隔离带）
+plugins/  插件层：一切数据取自通信层，一切结果汇报给通信层
+tests/    契约级测试（按新契约从零写）
+docs/     技术栈决策（宿主页：FastAPI + websocket / React PWA）
 ```
 
-## 接真模型
+## 一期范围
 
-LLM 是插件：`plugins/llm/`，**配置自管**在 `plugins/llm/manifest.json` 的 config 节（含 key，已 gitignore；入库示例见 `manifest.example.json`，装插件时照它填）：
+- 单实例、单链；会话内轮次串行（同一会话至多一个进行中的轮次）
+- 存储：stdlib `sqlite3` 单文件，无 ORM；操作日志另存 jsonl
+- 送达：缓冲制（回复在 onReply 收尾执行完毕前不对用户展示，之后一次性送达）
+- 信任模型：插件全信任（权限细分二期）
 
-```json
-{
-  "id": "llm",
-  "config": {
-    "base_url": "https://…/v1",
-    "model": "…",
-    "api_key": "本地填",
-    "timeout": 120
-  }
-}
-```
+## 纪律
 
-插件 on_start 自造 provider，经 `agent.add_provider` 上交宿主槽位（引擎只包一层做逐轮 trace，不碰配置值）；本体滤器经 `add_filter` 进列表。base_url 要带 `/v1`（适配器只补 `/chat/completions`）。冒烟：`python scripts\smoke_llm.py [提示词]`。
+- 一切上下文操作经通信层，禁止直接操作存储；通信层生成操作日志（重放与回归的依据）
+- 事件集封闭（会话级 7 个 + 插件级 4 个），插件不可造新事件
+- ctx 上不挂自由字段：受管操作走 ctx API（入操作日志），临时状态放插件实例
+- 每轮链只执行一次；模型插件内部是否多轮自循环属于该插件自身的设计
