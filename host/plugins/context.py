@@ -6,7 +6,6 @@
 on_start 里产生的随 stop 撤销——停而不卸即收回行为、保留存在。
 """
 import json
-import logging
 import pathlib
 
 from ..events import EventBus, Handle

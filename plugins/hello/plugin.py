@@ -26,7 +26,10 @@ class HelloPlugin(Plugin):
                 if m.get("role") == "user":
                     m["content"] = f"{m['content']}{inject}"
                     break
+
+                
             chain.doFilter(c)  # 交棒下游：echo（B 期 LLM）产出 content
+
             # 上浮段：处理 content——返回路径加时间戳
             ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
             c["content"] = f"{c['content']} [{stamp_tag} {ts}]"

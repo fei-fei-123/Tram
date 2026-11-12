@@ -132,7 +132,7 @@ class PluginManager:
 
     def unload(self, plugin_id):
         loaded = self._require(plugin_id)
-        self.stop(plugin_id)  # 幂等
+        self.stop(plugin_id)
         loaded.ctx._set_scope("unload")
         loaded.plugin.on_unload(loaded.ctx)
         loaded.ctx._dispose_all()  # 关插件＝撤销其全部贡献物
@@ -207,9 +207,11 @@ class PluginManager:
             raise PluginError(f"入口文件不存在：{entry_path}")
         module_name = f"tram_plugin_{manifest['id']}"
         spec = importlib.util.spec_from_file_location(module_name, entry_path)
-        module = importlib.util.module_from_spec(spec)
+        
         try:
-            spec.loader.exec_module(module)
+            if spec is not None and spec.loader is not None:
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
         except Exception as exc:
             raise PluginError(f"加载 {entry} 失败：{exc}") from exc
         return module

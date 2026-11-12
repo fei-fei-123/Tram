@@ -1,11 +1,5 @@
-"""Tram 引擎 · doFilter 递归语义＋列表装配（机制白清单 1、2）。
-
-滤器 ＝ 裸函数 filter(ctx, chain)：
-- 处理 / 改写 ctx；
-- 交棒：chain.doFilter(ctx)（继续下游）；
-- 短路：不调用 chain.doFilter（终止本链，自己负责产出 content）。
-
-deps 口子（机制 3）：{ config, store }，经 chain.deps 对滤器可见，签名永不再扩。
+"""
+Tram 引擎
 """
 
 
