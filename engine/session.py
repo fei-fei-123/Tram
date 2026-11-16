@@ -169,7 +169,7 @@ class SessionManager:
 
     # ============== 消息管理 ==============
     def add_message(self, session: Session, message: Message):
-        """添加消息到会话。ARCHIVED/DELETED 的会话拒收消息，不自动复活"""
+        """添加消息到会话"""
         if session.status is not SessionType.RUNNING:
             raise ValueError(f"session {session.id} 状态为 {session.status.value}，拒收消息")
         session.modified = int(time.time())
@@ -201,17 +201,16 @@ class SessionManager:
         self._message_db.update_content(message.id, message.content, message.options)
 
     def apply_operations(self, session: Session, changes: list[tuple[Operation, Message | None]]):
-        """回复结束按序重放变更操作，消息正式入库"""
+        """重放变更操作"""
         for operation, message in changes:
-            if operation.type == OperationType.ADD:
-                # 引擎内部提交，不走add_message的RUNNING门禁
-                self._message_db.insert(message=message, sid=session.id)
-            elif operation.type == OperationType.WRITE:
-                self._message_db.update_content(message.id, message.content, message.options)
+            if operation.type == OperationType.ADD and message is not None:
+                self.add_message(session, message)
+            elif operation.type == OperationType.WRITE and message is not None:
+                self.update_message(message)
             elif operation.type == OperationType.DELETE and operation.object_type == OperationObjectType.SESSION:
                 self._message_db.delete_by_session(sid=session.id)
-            elif operation.type == OperationType.DELETE:
-                self._message_db.delete(mid=operation.object_id)
+            elif operation.type == OperationType.DELETE and message is not None:
+                self.delete_message(message)
 
         session.modified = int(time.time())
         self._db.update(session=session)

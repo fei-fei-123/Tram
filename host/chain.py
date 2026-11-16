@@ -30,7 +30,7 @@ class ChainManager:
 
     def doFilter(self):
         """交棒：调下游插件，下游跑完回到下一行"""
-        self._do_filter()
+        self._do_filter() if self._do_filter is not None else None
 
     def run_chain(self, event: SessionEvent, data: dict):
         """运行执行链：洋葱模型"""

@@ -17,7 +17,7 @@ class OperationObjectType(str, Enum):
 
 @dataclass
 class Operation:
-    """操作体，语义见《上下文设计》操作节"""
+    """操作体"""
     object_type: OperationObjectType
     type: OperationType
     object_id: str = ""     # message时为消息id，其余留空
@@ -27,7 +27,7 @@ class Operation:
 
 @dataclass
 class OperationResult:
-    """操作结果：成功带产物，失败带原因"""
+    """操作结果"""
     ok: bool
     data: object = None
     reason: str = ""
