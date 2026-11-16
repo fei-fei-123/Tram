@@ -8,7 +8,7 @@ from shared.context import Operation, OperationObjectType, OperationResult, Oper
 from shared.models import Message, RoleType, Session
 
 def _clone_message(message: Message) -> Message:
-    """深拷贝一条消息（replace是浅拷贝，options要重新拷）"""
+    """深拷贝一条消息"""
     clone = replace(message)
     clone.options = deepcopy(message.options)
     return clone
@@ -86,18 +86,18 @@ class OperationDB:
         """建表"""
         self._conn.execute(self._DDL_TABLE)
 
-    def append(self, record: dict) -> int:
+    def append(self, record: dict) -> int | None:
         """写一条日志，返回日志序号"""
         cur = self._conn.execute(self._INSERT, record)
         return cur.lastrowid
 
     def list_by_session(self, sid: str) -> list[dict]:
-        """拉一个会话的全部日志，按序号"""
+        """拉一个会话的全部日志，按序号升序"""
         rows = self._conn.execute(self._LIST_BY_SESSION, {"sid": sid}).fetchall()
         return [dict(row) for row in rows]
 
 class OperationLog:
-    """操作日志：受理即落库"""
+    """操作日志"""
 
     def __init__(self, db: OperationDB) -> None:
         self._db = db
@@ -106,7 +106,7 @@ class OperationLog:
         """建表"""
         self._db.ensure_tables()
 
-    def append(self, session_id: str, plugin: str, operation: Operation, before, after, status: str) -> int:
+    def append(self, session_id: str, plugin: str, operation: Operation, before, after, status: str) -> int | None:
         """写一条日志，返回日志序号"""
         record = {
             "session_id": session_id,
@@ -119,7 +119,7 @@ class OperationLog:
         return self._db.append(record)
 
 class OperationManager:
-    """操作受理器：即时改上下文、即时记日志；消息正文延到回复结束统一入库"""
+    """操作受理器"""
 
     def __init__(self, opLog: OperationLog) -> None:
         self._opLog = opLog
@@ -171,6 +171,8 @@ class OperationManager:
 
     def _find(self, mid: str) -> Message | None:
         """按id找工作集里的消息"""
+        if self._context is None:
+            return None
         for m in self._context.messages:
             if m.id == mid:
                 return m
@@ -178,11 +180,15 @@ class OperationManager:
 
     def _session_read(self, operation: Operation):
         """读取全部消息的克隆列表"""
+        if self._context is None:
+            return OperationResult(False, None, "上下文未初始化"), None, None
         clones = [_clone_message(m) for m in self._context.messages]
         return OperationResult(True, clones, ""), None, None
 
     def _session_add(self, operation: Operation):
         """末尾追加一条消息，返回新消息id"""
+        if self._context is None:
+            return OperationResult(False, None, "上下文未初始化"), None, None
         if operation.role not in RoleType.__members__:
             return OperationResult(False, None, f"非法角色 {operation.role}"), None, None
         message = Message.create(RoleType[operation.role], operation.content, deepcopy(operation.options))
@@ -191,6 +197,8 @@ class OperationManager:
 
     def _session_delete(self, operation: Operation):
         """清空消息列表"""
+        if self._context is None:
+            return OperationResult(False, None, "上下文未初始化"), None, None
         removed = self._context.messages
         self._context.messages = []
         return OperationResult(True, len(removed), ""), removed, None
@@ -203,7 +211,7 @@ class OperationManager:
         return OperationResult(True, _clone_message(message), ""), None, None
 
     def _message_write(self, operation: Operation):
-        """整条替换消息内容，role不可变"""
+        """整条替换消息内容"""
         message = self._find(operation.object_id)
         if message is None:
             return OperationResult(False, None, "消息不存在"), None, None
@@ -215,6 +223,8 @@ class OperationManager:
 
     def _message_delete(self, operation: Operation):
         """删除一条消息"""
+        if self._context is None:
+            return OperationResult(False, None, "上下文未初始化"), None, None
         message = self._find(operation.object_id)
         if message is None:
             return OperationResult(False, None, "消息不存在"), None, None
@@ -222,7 +232,7 @@ class OperationManager:
         return OperationResult(True, None, ""), message, None
 
     def _reply_new_turn(self, operation: Operation):
-        """申请续轮，只置标记，落库无关"""
+        """申请续轮"""
         self._new_turn = True
         return OperationResult(True, None, ""), None, None
 
