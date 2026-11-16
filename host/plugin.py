@@ -74,7 +74,7 @@ class PluginManager:
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             # 工厂造实例
-            instance = getattr(module, data["factory"])()
+            instance = getattr(module, data["entry"]["factory"])()
             return instance
         except Exception as e:
             print(e)
