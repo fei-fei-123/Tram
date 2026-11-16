@@ -31,6 +31,7 @@ class MessageDB:
     _SELECT = "SELECT * FROM messages WHERE id = :id;"
     _LIST_BY_SESSION = "SELECT * FROM messages WHERE session_id = :sid ORDER BY created;"
     _DELETE = "DELETE FROM messages WHERE id = :id;"
+    _DELETE_BY_SESSION = "DELETE FROM messages WHERE session_id = :sid;"
 
     def __init__(self, db: db_manager.DBManager) -> None:
         self._conn = db
@@ -61,6 +62,10 @@ class MessageDB:
     def delete(self, mid: str) -> None:
         """抛弃单条消息。"""
         self._conn.execute(self._DELETE, {"id": mid})
+
+    def delete_by_session(self, sid: str) -> None:
+        """清空会话的全部消息"""
+        self._conn.execute(self._DELETE_BY_SESSION, {"sid": sid})
 
     def update_content(self, mid: str, content: str, options: dict) -> None:
         """编辑消息内容"""

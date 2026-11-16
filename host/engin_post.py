@@ -4,7 +4,11 @@ from shared.models import Message, Session
 
 
 class EnginePost:
-    pass
+    """程序层暴露给通信层的口"""
+
+    def apply_ops(self, session: Session, changes: list):
+        """回复结束：积压变更操作发程序层，逐条重放正式入库"""
+        pass
 
 class HostGateway(HostPost):
 

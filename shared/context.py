@@ -1,24 +1,33 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field
 from enum import Enum
-
-from shared.models import Message, Session
 
 class OperationType(str, Enum):
     """操作类型"""
-    WRITE = "WRITE"
-    ADD = "ADD"
-    DELETE = "DELETE"
-    READ = "READ"
+    READ = "read"
+    ADD = "add"
+    WRITE = "write"
+    DELETE = "delete"
+    NEW_TURN = "new_turn"
 
 class OperationObjectType(str, Enum):
     """操作对象类型"""
-    MESSAGE = "MESSAGE"
-    SESSION = "SESSION"
-    
+    SESSION = "session"
+    MESSAGE = "message"
+    REPLY = "reply"
 
+@dataclass
 class Operation:
-    """操作"""
+    """操作体，语义见《上下文设计》操作节"""
     object_type: OperationObjectType
-    object_id: str
     type: OperationType
-    content: str
+    object_id: str = ""     # message时为消息id，其余留空
+    role: str = "PLUGIN"    # 仅add有效，可指定任意角色
+    content: str = ""       # add/write时为消息内容
+    options: dict = field(default_factory=dict)   # add/write时随消息一并替换
+
+@dataclass
+class OperationResult:
+    """操作结果：成功带产物，失败带原因"""
+    ok: bool
+    data: object = None
+    reason: str = ""
