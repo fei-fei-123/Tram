@@ -3,6 +3,7 @@ import importlib.util
 import json
 import os
 
+from host.chain import ChainManager
 from host.operation import OperationManager
 from shared.events import PluginEvent
 
@@ -35,60 +36,11 @@ class PluginDB:
 class PluginManager:
     """插件链管理器"""
     
-    def __init__(self, db: PluginDB, path: str, opm: OperationManager):
+    def __init__(self, db: PluginDB, path: str, chain_manager: ChainManager):
         self.db = db
         self.path = path
         self.plugins: list[Plugin] = []
-        self.opm = opm
-
-    def create_plugin(self, data: dict, full_path: str) -> Plugin | None:
-        """创建插件实体"""
-        try:
-            instance = self.create_instance(data, full_path)
-            if instance is None:
-                return None
-            
-            methods = self.create_methods(instance, data)
-            plugin = Plugin(
-                id=data["id"],
-                name=data["name"],
-                description=data["description"],
-                version=data["version"],
-                path=data["entry"]["file"],
-                instance=instance,
-                methods=methods,
-            )
-            return plugin
-        except Exception as e:
-            print(e)
-            return None
-
-    def create_instance(self, data: dict, full_path: str) -> object | None:
-        """创建插件实例，插件文件按所在目录解析"""
-        try:
-            file = data["entry"]["file"]
-            # 按路径加载插件文件
-            spec = importlib.util.spec_from_file_location(data["id"], os.path.join(full_path, file))
-            if spec is None or spec.loader is None:
-                return None
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            # 工厂造实例
-            instance = getattr(module, data["entry"]["factory"])()
-            return instance
-        except Exception as e:
-            print(e)
-            return None
-
-    def create_methods(self, instance: object, data: dict) -> dict[PluginEvent, object]:
-        """创建插件方法"""
-        methods: list = data["methods"]
-        result: dict[PluginEvent, object] = {}
-        for method in methods:
-            if method["lifecycle"] in PluginEvent:
-                result[method["lifecycle"]] = getattr(instance, method["method"])
-        return result
-
+        self.chain_manager = chain_manager
 
     def load_plugin(self):
         """加载插件链"""
@@ -105,9 +57,62 @@ class PluginManager:
             with open(manifast_path, "r", encoding="utf-8") as f:
                 manifest = json.load(f)
             # 解析插件清单
-            plugin = self.create_plugin(manifest, full_path)
+            plugin = self._create_plugin(manifest, full_path)
             self.plugins.append(plugin) if plugin is not None else None
             
+    def run_method(self, event: PluginEvent):
+        """运行插件方法"""
+        for plugin in self.plugins:
+            method = plugin.methods.get(event, None)
+            if method is not None and callable(method):
+                self.chain_manager.set_current(plugin.id)
+                method(self.chain_manager)
 
+    def _create_plugin(self, data: dict, full_path: str) -> Plugin | None:
+        """创建插件实体"""
+        try:
+            instance = self._create_instance(data, full_path)
+            if instance is None:
+                return None
+            
+            methods = self._create_methods(instance, data)
+            plugin = Plugin(
+                id=data["id"],
+                name=data["name"],
+                description=data["description"],
+                version=data["version"],
+                path=data["entry"]["file"],
+                instance=instance,
+                methods=methods,
+            )
+            return plugin
+        except Exception as e:
+            print(e)
+            return None
 
+    def _create_instance(self, data: dict, full_path: str) -> object | None:
+        """创建插件实例，插件文件按所在目录解析"""
+        try:
+            file = data["entry"]["file"]
+            # 按路径加载插件文件
+            spec = importlib.util.spec_from_file_location(data["id"], os.path.join(full_path, file))
+            if spec is None or spec.loader is None:
+                return None
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            # 工厂造实例
+            instance = getattr(module, data["entry"]["factory"])()
+            return instance
+        except Exception as e:
+            print(e)
+            return None
+
+    def _create_methods(self, instance: object, data: dict) -> dict[PluginEvent, object]:
+        """创建插件方法"""
+        methods: list = data["methods"]
+        result: dict[PluginEvent, object] = {}
+        for method in methods:
+            if method["lifecycle"] in PluginEvent:
+                result[method["lifecycle"]] = getattr(instance, method["method"])
+        return result
                
