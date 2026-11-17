@@ -1,4 +1,7 @@
 from engine.host_post import HostPost
+from engine.session import SessionManager
+from host.chain import ChainManager
+from host.turn import TurnManager
 from shared.events import SessionEvent
 from shared.models import Message, Session
 
@@ -6,23 +9,23 @@ from shared.models import Message, Session
 class EnginePost:
     """程序层暴露给通信层的口"""
 
+    def __init__(self, session_manager: SessionManager) -> None:
+        self._session_manager = session_manager
+
     def apply_ops(self, session: Session, changes: list):
         """回复结束：积压变更操作发程序层，逐条重放正式入库"""
-        pass
+        self._session_manager.apply_operations(session, changes)
+
 
 class HostGateway(HostPost):
 
-    def dispatch(self, session: Session, message:Message, event: SessionEvent):
-        """接受会话事件"""
-        # if event == SessionEvent.ON_START:
-        #     self._manager.create_session()
-        # elif event == SessionEvent.ON_PAUSE:
-        #     self._manager.pause_session(session)
-        # elif event == SessionEvent.ON_RECOVER:
-        #     self._manager.recover_session(session)
-        # elif event == SessionEvent.ON_REPLY:
-        #     self._manager.reply_session(session)
-        # elif event == SessionEvent.ON_ARCHIVE:
-        #     self._manager.archive_session(session)
-        # elif event == SessionEvent.ON_DELETE:
-        #     self._manager.delete_session(session)
+    def __init__(self, chain_manager: ChainManager, turn_manager: TurnManager) -> None:
+        self._chain_manager = chain_manager
+        self._turn_manager = turn_manager
+
+    def dispatch(self, session: Session, messages: list[Message], event: SessionEvent):
+        """接受会话事件：回复走回复管线，其余直接跑链"""
+        if event == SessionEvent.ON_REPLY:
+            self._turn_manager.start_reply(session, messages)
+        else:
+            self._chain_manager.run_chain(event)
