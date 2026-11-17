@@ -68,6 +68,7 @@ class OperationDB:
     CREATE TABLE IF NOT EXISTS operation_log (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
         session_id VARCHAR(64) NOT NULL,
+        turn_id    VARCHAR(64) NOT NULL,
         plugin     VARCHAR(64) NOT NULL,
         operation  TEXT        NOT NULL,
         before     TEXT,
@@ -76,7 +77,7 @@ class OperationDB:
     );
     """
 
-    _INSERT = "INSERT INTO operation_log (session_id, plugin, operation, before, after, status) VALUES (:session_id, :plugin, :operation, :before, :after, :status);"
+    _INSERT = "INSERT INTO operation_log (session_id, turn_id, plugin, operation, before, after, status) VALUES (:session_id, :turn_id, :plugin, :operation, :before, :after, :status);"
     _LIST_BY_SESSION = "SELECT * FROM operation_log WHERE session_id = :sid ORDER BY id;"
 
     def __init__(self, db: db_manager.DBManager) -> None:
@@ -106,10 +107,11 @@ class OperationLog:
         """建表"""
         self._db.ensure_tables()
 
-    def append(self, session_id: str, plugin: str, operation: Operation, before, after, status: str) -> int | None:
+    def append(self, session_id: str, turn_id: str, plugin: str, operation: Operation, before, after, status: str) -> int | None:
         """写一条日志，返回日志序号"""
         record = {
             "session_id": session_id,
+            "turn_id": turn_id,
             "plugin": plugin,
             "operation": _op_json(operation),
             "before": _val_json(before),
@@ -125,6 +127,7 @@ class OperationManager:
         self._opLog = opLog
         self._context: Context | None = None
         self._new_turn = False
+        self._turn_id = ""
         self._pending: list[tuple[Operation, Message | None]] = []
 
     def set_context(self, session: Session, messages: list[Message]) -> None:
@@ -132,6 +135,29 @@ class OperationManager:
         self._context = Context.create(session, messages)
         self._new_turn = False
         self._pending = []
+
+    def set_turn_id(self, turn_id: str) -> None:
+        """设置当前轮次id"""
+        self._turn_id = turn_id
+
+    def submit_error(self, plugin:str="", error:str=""):
+        """提交错误"""
+        if self._context is None:
+            session_id = turn_id = ""
+            before = after = ""
+        else:
+            session_id = self._context.session.id
+            turn_id = self._turn_id
+            before = self._context.messages[-1] if self._context.messages else ""
+            after = before
+        op = Operation(
+            object_type=OperationObjectType.ERROR,
+            type=OperationType.ERROR,
+            role="PLUGIN",
+            content=error,
+        )
+        self._opLog.append(session_id, turn_id, plugin, op, before, after, "fail")
+        
 
     def submit(self, plugin: str, operation: Operation) -> OperationResult:
         """插件提交操作：受理、改上下文、记日志"""
@@ -142,10 +168,10 @@ class OperationManager:
         if result.ok and operation.type in _MUTATING:
             pending_op = operation
             if operation.type == OperationType.ADD:
-                # add回填临时id，程序层入库要用
+                # add回填临时id
                 pending_op = replace(operation, object_id=result.data)
             self._pending.append((pending_op, after if isinstance(after, Message) else None))
-        self._opLog.append(self._context.session.id, plugin, operation, before, after, "ok" if result.ok else "fail")
+        self._opLog.append(self._context.session.id, self._turn_id, plugin, operation, before, after, "ok" if result.ok else "fail")
         return result
 
     def take_new_turn(self) -> bool:
