@@ -1,7 +1,5 @@
 from engine.host_post import HostPost
 from engine.session import SessionManager
-from host.chain import ChainManager
-from host.turn import TurnManager
 from shared.events import SessionEvent
 from shared.models import Message, Session
 
@@ -19,7 +17,7 @@ class EnginePost:
 
 class HostGateway(HostPost):
 
-    def __init__(self, chain_manager: ChainManager, turn_manager: TurnManager) -> None:
+    def __init__(self, chain_manager: "ChainManager", turn_manager: "TurnManager") -> None:  # pyright: ignore[reportUndefinedVariable]
         self._chain_manager = chain_manager
         self._turn_manager = turn_manager
 

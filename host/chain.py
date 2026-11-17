@@ -55,6 +55,7 @@ class ChainManager:
         def do_filter():
             handed[0] = True
             self._dispatch(methods, index + 1, call_back)
+            self.plugin_id = plugin_id
 
         self._do_filter = do_filter
         try:
