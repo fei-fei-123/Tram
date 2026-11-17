@@ -1,3 +1,5 @@
+from typing import Callable
+
 from host.operation import OperationManager
 from shared.events import SessionEvent
 
@@ -10,6 +12,9 @@ class ChainManager:
         self.plugin_id = ""
         self.chains: dict[SessionEvent, list[tuple[str, object]]] = {}
         self._do_filter = None
+        # 装配钩子
+        self.is_open: Callable[[str], bool] | None = None
+        self.on_register: Callable[[str, SessionEvent, object], None] | None = None
 
     # ====================== 插件链管理 ====================== #
 
@@ -28,9 +33,15 @@ class ChainManager:
 
 
     # ====================== 插件链操作 ====================== #
+    def set_chains(self, chains: dict[SessionEvent, list[tuple[str, object]]]):
+        """整体替换执行链（重装配专用），不触发注册上报"""
+        self.chains = chains
+
     def add_method(self, event: SessionEvent, method):
         """添加方法到执行链"""
         self.chains.setdefault(event, []).append((self.plugin_id, method))
+        if self.on_register is not None:
+            self.on_register(self.plugin_id, event, method)
 
     def submit(self, operation):
         """插件提交操作"""
@@ -49,6 +60,10 @@ class ChainManager:
                 call_back()
             return
         plugin_id, method = methods[index]
+        # 启停门控
+        if self.is_open is not None and not self.is_open(plugin_id):
+            self._dispatch(methods, index + 1, call_back)
+            return
         self.set_current(plugin_id)
         handed = [False]
 

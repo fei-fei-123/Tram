@@ -1,4 +1,5 @@
 import sqlite3
+from contextlib import contextmanager
 
 class DBManager:
     def __init__(self) -> None:
@@ -15,5 +16,13 @@ class DBManager:
         cur = self.conn.execute(sql, params)
         self.conn.commit()
         return cur
+
+    @contextmanager
+    def transaction(self):
+        """事务块：块内语句原子提交，异常自动回滚"""
+        if self.conn is None:
+            raise RuntimeError("DB Manager 未初始化")
+        with self.conn:
+            yield self.conn
 
 db = DBManager()
