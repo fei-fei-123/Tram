@@ -1,0 +1,16 @@
+{
+    "id": "byebye",
+    "name": "Byebye",
+    "description": "模拟LLM，轮次里添加一条Byebye消息",
+    "version": "0.0.1",
+    "entry": {
+        "file": "byebye.py",
+        "factory": "create_plugin"
+    },
+    "methods": [
+        {
+            "lifecycle": "onLoad",
+            "method": "on_load"
+        }
+    ]
+}
