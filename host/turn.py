@@ -22,7 +22,7 @@ class TurnManager:
 
     def start_turn(self) -> None:
         """开始一个新轮次"""
-        max_turn_count = int(self._config_db.get("MAX_TURN_COUNT") or "8")
+        max_turn_count = self.get_max_turn()
         try:
             self._new_turn = True
             # 轮次开始
@@ -57,3 +57,11 @@ class TurnManager:
         self._new_turn = False
         if self._session is not None:
             self._engine_post.apply_ops(self._session, operations)
+
+
+    def get_max_turn(self):
+        """获取最大轮次"""
+        try:
+            return int(self._config_db.get("MAX_TURN_COUNT") or "8")
+        except ValueError:
+            return 8

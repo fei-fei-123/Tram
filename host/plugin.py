@@ -202,17 +202,13 @@ class PluginManager:
                 self.move(plugin_id, index + 1)
 
     def set_enable(self, plugin_id: str, enabled: bool):
-        """启用/停用：只改门控开关，不重算链（启停即门控，执行时跳过）"""
+        """启用/停用"""
         if plugin_id not in self.plugins:
             raise ValueError(f"插件不存在: {plugin_id}")
         self.plugins[plugin_id].enable = enabled
         self.save()
 
     # ============== 链装配 ==============
-
-    def _reindex(self):
-        """重新计算pos"""
-        self._pos = {pid: i for i, pid in enumerate(self.order)}
 
     def is_open(self, plugin_id: str) -> bool:
         """启停门控：停用的插件在链执行时被跳过"""
@@ -258,6 +254,10 @@ class PluginManager:
         return views
 
     # ====================== 私有方法 ====================== #
+
+    def _reindex(self):
+        """重新计算pos"""
+        self._pos = {pid: i for i, pid in enumerate(self.order)}
 
     def _create_plugin(self, data: dict, full_path: str) -> Plugin | None:
         """创建插件实体"""

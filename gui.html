@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tram 宿主页</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Microsoft YaHei", sans-serif;
+    background: #f2f3f5;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    box-shadow: 0 0 12px rgba(0,0,0,.08);
+  }
+
+  /* 顶栏 */
+  #top {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e5e6eb;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  #top b { font-size: 16px; }
+  #sid {
+    flex: 1;
+    color: #86909c;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  button {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 6px;
+    background: #165dff;
+    color: #fff;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  button:disabled { background: #94bfff; cursor: not-allowed; }
+
+  /* 消息区 */
+  #msgs {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  #hint { color: #86909c; text-align: center; margin-top: 40vh; font-size: 13px; }
+
+  .line { display: flex; }
+  .line.USER { justify-content: flex-end; }
+  .bubble {
+    max-width: 72%;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 14px;
+    line-height: 1.5;
+    word-break: break-word;
+  }
+  .USER .bubble { background: #165dff; color: #fff; border-top-right-radius: 2px; }
+  .AI .bubble { background: #f2f3f5; border-top-left-radius: 2px; }
+  .PLUGIN .bubble { background: #fff7e8; border-top-left-radius: 2px; }
+  .SYSTEM .bubble { background: #f2f3f5; color: #4e5969; border-top-left-radius: 2px; }
+
+  .meta { font-size: 11px; margin-bottom: 3px; color: #86909c; }
+  .USER .meta { text-align: right; }
+  .meta .role { font-weight: bold; margin-right: 6px; }
+
+  .tip { color: #86909c; font-size: 12px; text-align: center; }
+
+  /* 输入区 */
+  #bottom {
+    padding: 12px 16px;
+    border-top: 1px solid #e5e6eb;
+    display: flex;
+    gap: 10px;
+  }
+  #input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #e5e6eb;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+  }
+  #input:focus { border-color: #165dff; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <b>Tram</b>
+    <span id="sid">未开启会话</span>
+    <button id="newBtn" onclick="newSession()">开启会话</button>
+  </div>
+  <div id="msgs">
+    <div id="hint">先开启一个会话，再说点什么</div>
+  </div>
+  <div id="bottom">
+    <input id="input" placeholder="输入消息，回车发送" disabled onkeydown="if(event.key==='Enter')send()">
+    <button id="sendBtn" onclick="send()" disabled>发送</button>
+  </div>
+</div>
+
+<script>
+// 全局状态
+let sid = null;
+let sending = false;
+
+const msgs = document.getElementById("msgs");
+const input = document.getElementById("input");
+
+
+// 通用请求，出错直接抛服务端中文消息
+async function post(url, body) {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {}),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "请求失败");
+  return data;
+}
+
+
+// 1. 开启会话
+async function newSession() {
+  const btn = document.getElementById("newBtn");
+  btn.disabled = true;
+  try {
+    const data = await post("/api/session");
+    sid = data.id;
+    msgs.innerHTML = "";
+    document.getElementById("sid").textContent = "会话 " + sid;
+    input.disabled = false;
+    document.getElementById("sendBtn").disabled = false;
+    input.focus();
+  } catch (e) {
+    addTip("开会话失败：" + e.message);
+  }
+  btn.disabled = false;
+}
+
+
+// 2. 发消息并走一轮回复，3. 收到的差集消息逐条上屏
+async function send() {
+  const text = input.value.trim();
+  if (!text || !sid || sending) return;
+
+  sending = true;
+  input.value = "";
+  addMsg({ role: "USER", content: text, created: Math.floor(Date.now() / 1000) });
+  const tip = addTip("回复中…");
+  document.getElementById("sendBtn").disabled = true;
+
+  try {
+    const data = await post("/api/message", { sid: sid, text: text });
+    tip.remove();
+    data.messages.forEach(addMsg);
+  } catch (e) {
+    tip.remove();
+    addTip("发送失败：" + e.message);
+  }
+
+  sending = false;
+  document.getElementById("sendBtn").disabled = false;
+  input.focus();
+}
+
+
+// 一条消息一个气泡
+function addMsg(m) {
+  const div = document.createElement("div");
+  div.className = "line " + m.role;
+  const t = new Date(m.created * 1000).toTimeString().slice(0, 8);
+  div.innerHTML =
+    '<div class="meta"><span class="role">' + m.role + '</span>' + t + '</div>' +
+    '<div class="bubble"></div>';
+  div.querySelector(".bubble").textContent = m.content;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+
+// 状态提示行（不入消息流）
+function addTip(text) {
+  const div = document.createElement("div");
+  div.className = "tip";
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+</script>
+</body>
+</html>
