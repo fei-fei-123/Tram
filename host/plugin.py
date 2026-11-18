@@ -206,12 +206,24 @@ class PluginManager:
         if plugin_id not in self.plugins:
             raise ValueError(f"插件不存在: {plugin_id}")
         self.plugins[plugin_id].enable = enabled
+        # 执行方法
+        event = PluginEvent.ON_ENABLE if enabled else PluginEvent.ON_DISABLE
+        self.run_method(event, self.plugins[plugin_id])
+        self.save()
+
+    def unload(self, plugin_id: str):
+        """卸载插件"""
+        if plugin_id not in self.plugins:
+            raise ValueError(f"插件不存在: {plugin_id}")
+        # 执行方法
+        event = PluginEvent.ON_UNLOAD
+        self.run_method(event, self.plugins[plugin_id])
         self.save()
 
     # ============== 链装配 ==============
 
     def is_open(self, plugin_id: str) -> bool:
-        """启停门控：停用的插件在链执行时被跳过"""
+        """启停门控"""
         plugin = self.plugins.get(plugin_id)
         return plugin is not None and plugin.enable
 
@@ -230,11 +242,21 @@ class PluginManager:
                     chains.setdefault(event, []).append((pid, method))
         self.chain_manager.set_chains(chains)
 
-    def run_method(self, event: PluginEvent):
-        """运行方法"""
+    def run_methods(self, event: PluginEvent, has_enable: bool = False):
+        """
+            运行方法
+            :param event: 事件类型
+            :param has_enable: 仅运行启用插件
+        """
         for pid in self.order:
-            for method in self.plugins[pid].methods.get(event, []):
-                self.chain_manager.set_current(pid)
+            if has_enable and not self.is_open(pid):
+                continue
+            self.run_method(event, self.plugins[pid])
+
+    def run_method(self, event: PluginEvent, plugin: Plugin):
+        """运行单个方法"""
+        for method in plugin.methods.get(event, []):
+                self.chain_manager.set_current(plugin.id)
                 method(self.chain_manager)
 
     def snapshot(self) -> list[PluginView]:

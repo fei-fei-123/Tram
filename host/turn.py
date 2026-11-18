@@ -22,7 +22,7 @@ class TurnManager:
 
     def start_turn(self) -> None:
         """开始一个新轮次"""
-        max_turn_count = self.get_max_turn()
+        max_turn_count = self._get_max_turn()
         try:
             self._new_turn = True
             # 轮次开始
@@ -50,6 +50,45 @@ class TurnManager:
         finally:
             self.complete_turn()
 
+    def start_session(self, session: Session, messages: list[Message]):
+        try:
+            self._session = session
+            self._operation_manager.set_context(session, messages)
+            self._chain_manager.run_chain(SessionEvent.ON_START)
+        except Exception as e:
+            self._operation_manager.submit_error(error="会话开始失败，见失败日志")
+            print(e)
+
+    def delete_session(self, session: Session, messages: list[Message]) -> None:
+        """删除会话"""
+        try:
+            self._session = session
+            self._operation_manager.set_context(session, messages)
+            self._chain_manager.run_chain(SessionEvent.ON_DELETE)
+        except Exception as e:
+            self._operation_manager.submit_error(error="会话删除失败，见失败日志")
+            print(e)
+
+    def archive_session(self, session: Session, messages: list[Message]) -> None:
+        """归档会话"""
+        try:
+            self._session = session
+            self._operation_manager.set_context(session, messages)
+            self._chain_manager.run_chain(SessionEvent.ON_ARCHIVE)
+        except Exception as e:
+            self._operation_manager.submit_error(error="会话归档失败，见失败日志")
+            print(e)
+
+    def pause_session(self, session: Session, messages: list[Message]) -> None:
+        """暂停会话"""
+        try:
+            self._session = session
+            self._operation_manager.set_context(session, messages)
+            self._chain_manager.run_chain(SessionEvent.ON_PAUSE)
+        except Exception as e:
+            self._operation_manager.submit_error(error="会话暂停失败，见失败日志")
+            print(e)
+
     def complete_turn(self) -> None:
         """完成当前轮次"""
         operations = self._operation_manager.commit()
@@ -59,7 +98,9 @@ class TurnManager:
             self._engine_post.apply_ops(self._session, operations)
 
 
-    def get_max_turn(self):
+    # ======================= 私有方法 ======================= #
+
+    def _get_max_turn(self):
         """获取最大轮次"""
         try:
             return int(self._config_db.get("MAX_TURN_COUNT") or "8")

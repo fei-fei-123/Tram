@@ -47,9 +47,15 @@ class ChainManager:
         """插件提交操作"""
         return self.op_manager.submit(self.plugin_id, operation)
 
+    def get_interrupt(self) -> dict | None:
+        """查询当前回复的中断原因；None 表示正常结束"""
+        return self.op_manager.get_interrupt()
+
     def doFilter(self):
         """执行过滤器"""
-        self._do_filter() if self._do_filter is not None else None
+        f, self._do_filter = self._do_filter, None
+        if f is not None:
+            f()
 
 
     # ====================== 私有方法 ====================== #
@@ -79,9 +85,21 @@ class ChainManager:
             if handed[0]:
                 # 后半段报错：视为已执行完毕，回程继续
                 print(f"chain 后半段异常: {e}")
-                self.op_manager.submit_error(plugin_id, str(e))
             else:
-                # 前半段报错：中断本次链
+                # 前半段报错：中断本次链（下游不执行）
                 print(f"chain 前半段异常: {e}")
-                self.op_manager.submit_error(plugin_id, str(e))
-                raise
+            self.op_manager.submit_error(plugin_id, str(e))
+            if not handed[0]:
+                # 中断原因落到回复级（先到先得），收尾段经 get_interrupt 查询
+                self.op_manager.mark_interrupted(plugin_id, str(e))
+        except BaseException as e:
+            # 非常规异常（用户取消/SystemExit等）：
+            if not getattr(e, "_tram_logged", False):
+                print(f"chain 非常规中断: {type(e).__name__}: {e}")
+                self.op_manager.submit_error(plugin_id, f"中断: {type(e).__name__}")
+                self.op_manager.mark_interrupted(plugin_id, f"中断: {type(e).__name__}")
+                setattr(e, "_tram_logged", True)
+            raise
+        finally:
+            # 未消费的doFilter闭包作废，防止回程/链外重复触发下游
+            self._do_filter = None

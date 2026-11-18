@@ -37,7 +37,7 @@ def build(db_path: str, plugin_dir: str):
     chain_manager.on_register = plugin_manager.record_registration
     plugin_manager.load_plugin()
     # 通知插件装配链：onLoad 中注册进各事件链，注册顺序即用户配置顺序
-    plugin_manager.run_method(PluginEvent.ON_LOAD)
+    plugin_manager.run_methods(PluginEvent.ON_LOAD)
     engine_post = EnginePost(session_manager)
     turn_manager = TurnManager(chain_manager, op_manager, engine_post, config_db)
     gateway = HostGateway(chain_manager, turn_manager)

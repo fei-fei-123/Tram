@@ -129,12 +129,14 @@ class OperationManager:
         self._new_turn = False
         self._turn_id = ""
         self._pending: list[tuple[Operation, Message | None]] = []
+        self._interrupt: dict | None = None  # 回复级中断原因
 
     def set_context(self, session: Session, messages: list[Message]) -> None:
         """设置上下文，开新回复时调用"""
         self._context = Context.create(session, messages)
         self._new_turn = False
         self._pending = []
+        self._interrupt = None
 
     def set_turn_id(self, turn_id: str) -> None:
         """设置当前轮次id"""
@@ -174,6 +176,15 @@ class OperationManager:
         self._opLog.append(self._context.session.id, self._turn_id, plugin, operation, before, after, "ok" if result.ok else "fail")
         return result
 
+    def mark_interrupted(self, plugin: str, reason: str):
+        """标记本轮回复被中断"""
+        if self._interrupt is None:
+            self._interrupt = {"plugin": plugin, "reason": reason}
+
+    def get_interrupt(self) -> dict | None:
+        """查询当前回复的中断原因；None 表示正常"""
+        return self._interrupt
+
     def take_new_turn(self) -> bool:
         """读取续轮申请并复位"""
         requested = self._new_turn
@@ -185,6 +196,7 @@ class OperationManager:
         changes = self._pending
         self._pending = []
         self._context = None
+        self._interrupt = None
         return changes
 
     # ============== 各操作的处理 ==============
@@ -207,6 +219,7 @@ class OperationManager:
     def _session_read(self, operation: Operation):
         """读取全部消息的克隆列表"""
         if self._context is None:
+            self.submit_error(error="上下文未初始化")
             return OperationResult(False, None, "上下文未初始化"), None, None
         clones = [_clone_message(m) for m in self._context.messages]
         return OperationResult(True, clones, ""), None, None
@@ -214,8 +227,10 @@ class OperationManager:
     def _session_add(self, operation: Operation):
         """末尾追加一条消息，返回新消息id"""
         if self._context is None:
+            self.submit_error(error="上下文未初始化")
             return OperationResult(False, None, "上下文未初始化"), None, None
         if operation.role not in RoleType.__members__:
+            self.submit_error(error=f"非法角色 {operation.role}")
             return OperationResult(False, None, f"非法角色 {operation.role}"), None, None
         message = Message.create(RoleType[operation.role], operation.content, deepcopy(operation.options))
         self._context.messages.append(message)
@@ -224,6 +239,7 @@ class OperationManager:
     def _session_delete(self, operation: Operation):
         """清空消息列表"""
         if self._context is None:
+            self.submit_error(error="上下文未初始化")
             return OperationResult(False, None, "上下文未初始化"), None, None
         removed = self._context.messages
         self._context.messages = []
@@ -233,14 +249,16 @@ class OperationManager:
         """读取单条消息的克隆"""
         message = self._find(operation.object_id)
         if message is None:
-            return OperationResult(False, None, "消息不存在"), None, None
+            self.submit_error(error=f"消息 {operation.object_id} 不存在")
+            return OperationResult(False, None, f"消息 {operation.object_id} 不存在"), None, None
         return OperationResult(True, _clone_message(message), ""), None, None
 
     def _message_write(self, operation: Operation):
         """整条替换消息内容"""
         message = self._find(operation.object_id)
         if message is None:
-            return OperationResult(False, None, "消息不存在"), None, None
+            self.submit_error(error=f"消息 {operation.object_id} 不存在")
+            return OperationResult(False, None, f"消息 {operation.object_id} 不存在"), None, None
         old = _clone_message(message)
         message.content = operation.content
         message.options = deepcopy(operation.options)
@@ -250,10 +268,12 @@ class OperationManager:
     def _message_delete(self, operation: Operation):
         """删除一条消息"""
         if self._context is None:
+            self.submit_error(error="上下文未初始化")
             return OperationResult(False, None, "上下文未初始化"), None, None
         message = self._find(operation.object_id)
         if message is None:
-            return OperationResult(False, None, "消息不存在"), None, None
+            self.submit_error(error=f"消息 {operation.object_id} 不存在")
+            return OperationResult(False, None, f"消息 {operation.object_id} 不存在"), None, None
         self._context.messages.remove(message)
         return OperationResult(True, None, ""), message, None
 
