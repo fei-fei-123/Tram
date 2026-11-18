@@ -22,7 +22,7 @@ class SessionType(str, Enum):
 
 @dataclass
 class Message:
-    """消息类型。created=发言时间；modified=最后编辑时间（编辑语义未定稿，默认流程当作不可变）"""
+    """消息类型"""
     id: str
     role: RoleType
     content: str

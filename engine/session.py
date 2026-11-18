@@ -181,9 +181,9 @@ class SessionManager:
         """列出会话中的所有消息（纯读，无副作用）"""
         return self._message_db.list_by_session(sid=session.id)
 
-    def delete_message(self, message: Message):
+    def delete_message(self, mid: str):
         """删除消息"""
-        self._message_db.delete(mid=message.id)
+        self._message_db.delete(mid=mid)
 
     def update_messages(self, session: Session, messages: list[Message]):
         """更新会话中的所有消息"""
@@ -209,8 +209,9 @@ class SessionManager:
                 self.update_message(message)
             elif operation.type == OperationType.DELETE and operation.object_type == OperationObjectType.SESSION:
                 self._message_db.delete_by_session(sid=session.id)
-            elif operation.type == OperationType.DELETE and message is not None:
-                self.delete_message(message)
+            elif operation.type == OperationType.DELETE:
+                # 删除没有实体类
+                self.delete_message(operation.object_id)
 
         session.modified = int(time.time())
         self._db.update(session=session)

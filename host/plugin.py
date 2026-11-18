@@ -159,14 +159,7 @@ class PluginManager:
             plugin.enable = saved_enable.get(pid, plugin.enable)
 
         # 更新顺序
-        self._pos = {pid: p for pid, p in self._pos.items() if pid in self.plugins}
-        nxt = max(saved_pos.values(), default=-1) + 1
-        for pid in self.order:
-            if pid in saved_pos:
-                self._pos[pid] = saved_pos[pid]
-            else:
-                self._pos[pid] = nxt
-                nxt += 1
+        self._reindex()
         self.save()
 
     def save(self):
