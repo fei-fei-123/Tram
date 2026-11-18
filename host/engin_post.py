@@ -25,5 +25,16 @@ class HostGateway(HostPost):
         """接受会话事件：回复走回复管线，其余直接跑链"""
         if event == SessionEvent.ON_REPLY:
             self._turn_manager.start_reply(session, messages)
-        else:
-            self._chain_manager.run_chain(event)
+        elif event == SessionEvent.ON_START:
+            self._turn_manager.start_session(session, messages)
+        elif event == SessionEvent.ON_TURN:
+            # 虽然不知道有什么意义，但还是加上吧，说不定后续会用到
+            self._turn_manager.start_turn()
+        elif event == SessionEvent.ON_ARCHIVE:
+            self._turn_manager.archive_session(session, messages)
+        elif event == SessionEvent.ON_DELETE:
+            self._turn_manager.delete_session(session, messages)
+        elif event == SessionEvent.ON_PAUSE:
+            self._turn_manager.pause_session(session, messages)
+        elif event == SessionEvent.ON_RECOVER:
+            self._turn_manager.recover_session(session, messages)
