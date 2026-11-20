@@ -30,7 +30,7 @@ class PromptPlugin:
         self._persona = persona if persona else DEFAULT_PERSONA
 
     def on_load(self, ctx):
-        ctx.add_method(SessionEvent.ON_REPLY, self.reply)
+        ctx.add_method(SessionEvent.ON_START, self.reply)
 
     def reply(self, ctx):
         result = ctx.submit(Operation(object_type=OperationObjectType.SESSION, type=OperationType.READ))

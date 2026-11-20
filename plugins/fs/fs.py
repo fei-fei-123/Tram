@@ -44,7 +44,7 @@ class FsPlugin:
         os.makedirs(self._root, exist_ok=True)
 
     def on_load(self, ctx):
-        ctx.add_method(SessionEvent.ON_REPLY, self.reply)
+        ctx.add_method(SessionEvent.ON_START, self.reply)
         ctx.add_method(SessionEvent.ON_TURN, self.turn)
 
     def reply(self, ctx):

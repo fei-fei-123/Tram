@@ -57,7 +57,7 @@ class ShellPlugin:
             self._max_output = DEFAULT_MAX_OUTPUT
 
     def on_load(self, ctx):
-        ctx.add_method(SessionEvent.ON_REPLY, self.reply)
+        ctx.add_method(SessionEvent.ON_START, self.reply)
         ctx.add_method(SessionEvent.ON_TURN, self.turn)
 
     def reply(self, ctx):

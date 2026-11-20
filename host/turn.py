@@ -58,6 +58,8 @@ class TurnManager:
         except Exception as e:
             self._operation_manager.submit_error(error="会话开始失败，见失败日志")
             print(e)
+        finally:
+            self.complete_turn()
 
     def delete_session(self, session: Session, messages: list[Message]) -> None:
         """删除会话"""
@@ -68,6 +70,8 @@ class TurnManager:
         except Exception as e:
             self._operation_manager.submit_error(error="会话删除失败，见失败日志")
             print(e)
+        finally:
+            self.complete_turn()
 
     def archive_session(self, session: Session, messages: list[Message]) -> None:
         """归档会话"""
@@ -78,6 +82,8 @@ class TurnManager:
         except Exception as e:
             self._operation_manager.submit_error(error="会话归档失败，见失败日志")
             print(e)
+        finally:
+            self.complete_turn()
 
     def pause_session(self, session: Session, messages: list[Message]) -> None:
         """暂停会话"""
@@ -88,6 +94,8 @@ class TurnManager:
         except Exception as e:
             self._operation_manager.submit_error(error="会话暂停失败，见失败日志")
             print(e)
+        finally:
+            self.complete_turn()
 
     def complete_turn(self) -> None:
         """完成当前轮次"""
