@@ -10,6 +10,29 @@ from shared import db_manager
 from shared.config import ConfigDB
 from shared.events import PluginEvent
 
+# 一次性种子的目标链序（目录扫描的字母序不符合需要）
+_SEED_ORDER = ("prompt", "llm", "fs", "shell")
+# 一次性停用的演示插件（hello 每轮强插消息且必续轮，会污染真实会话）
+_SEED_DISABLE = ("hello", "byebye")
+
+
+def _seed_defaults(config_db: ConfigDB, plugin_manager: PluginManager) -> None:
+    """首次构建时的一次性种子：链序、停用演示插件、轮次上限"""
+    if config_db.get("tram.core_seeded"):
+        return
+    index = 0
+    for pid in _SEED_ORDER:
+        if pid in plugin_manager.plugins:
+            plugin_manager.move(pid, index)
+            index += 1
+    for pid in _SEED_DISABLE:
+        if pid in plugin_manager.plugins and plugin_manager.is_open(pid):
+            plugin_manager.set_enable(pid, False)
+    # 仅在用户从未设置过时才写默认值，不覆盖用户调优
+    if config_db.get("MAX_TURN_COUNT") is None:
+        config_db.set("MAX_TURN_COUNT", "16")
+    config_db.set("tram.core_seeded", "1")
+
 
 def build(db_path: str, plugin_dir: str):
     """组装三层，返回生命周期入口与会话管理器"""
@@ -38,6 +61,8 @@ def build(db_path: str, plugin_dir: str):
     plugin_manager.load_plugin()
     # 通知插件装配链：onLoad 中注册进各事件链，注册顺序即用户配置顺序
     plugin_manager.run_methods(PluginEvent.ON_LOAD)
+    # 首次构建：链序与默认值种子（用现有公开 API，不直写库）
+    _seed_defaults(config_db, plugin_manager)
     engine_post = EnginePost(session_manager)
     turn_manager = TurnManager(chain_manager, op_manager, engine_post, config_db)
     gateway = HostGateway(chain_manager, turn_manager)

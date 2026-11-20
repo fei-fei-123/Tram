@@ -1,0 +1,21 @@
+{
+    "id": "shell",
+    "name": "Shell",
+    "description": "命令执行工具插件（高危：模型可执行任意本机命令，不需要时请停用）：run_command，带超时与输出截断",
+    "version": "0.0.1",
+    "entry": {
+        "file": "shell.py",
+        "factory": "create_plugin"
+    },
+    "methods": [
+        {
+            "lifecycle": "onLoad",
+            "method": "on_load"
+        }
+    ],
+    "config": {
+        "cwd": "data/workspace",
+        "timeout": 30,
+        "max_output": 8192
+    }
+}

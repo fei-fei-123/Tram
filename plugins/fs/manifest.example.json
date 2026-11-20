@@ -1,0 +1,19 @@
+{
+    "id": "fs",
+    "name": "Fs",
+    "description": "文件系统工具插件：read_file / write_file / list_dir，路径限定在工作区根内",
+    "version": "0.0.1",
+    "entry": {
+        "file": "fs.py",
+        "factory": "create_plugin"
+    },
+    "methods": [
+        {
+            "lifecycle": "onLoad",
+            "method": "on_load"
+        }
+    ],
+    "config": {
+        "root": "data/workspace"
+    }
+}

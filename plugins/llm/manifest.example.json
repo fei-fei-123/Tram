@@ -1,0 +1,22 @@
+{
+    "id": "llm",
+    "name": "LLM",
+    "description": "OpenAI 协议大模型插件：轮次里调用 chat.completions 生成回复，支持工具调用文本协议",
+    "version": "0.0.1",
+    "entry": {
+        "file": "llm.py",
+        "factory": "create_plugin"
+    },
+    "methods": [
+        {
+            "lifecycle": "onLoad",
+            "method": "on_load"
+        }
+    ],
+    "config": {
+        "base_url": "https://api.openai.com/v1",
+        "api_key": "sk-（填你的密钥，或留空回退环境变量 OPENAI_API_KEY）",
+        "model": "gpt-4o-mini",
+        "timeout": 120
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "id": "prompt",
+    "name": "Prompt",
+    "description": "系统提示词插件：确保会话中存在系统消息（人设来自 config.system_prompt，缺省用内置默认）",
+    "version": "0.0.1",
+    "entry": {
+        "file": "prompt.py",
+        "factory": "create_plugin"
+    },
+    "methods": [
+        {
+            "lifecycle": "onLoad",
+            "method": "on_load"
+        }
+    ],
+    "config": {
+        "system_prompt": ""
+    }
+}

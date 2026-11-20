@@ -14,6 +14,8 @@
 | 插件链.md | 插件装配、清单格式、方法注册、执行与门控 |
 | 上下文设计.md | ctx 信封（待整理） |
 
+本仓内另维护 `spec/` 规格知识库：从代码提炼的契约规范（事件集、插件链、操作、轮次、存储），随代码同步更新，入口见 [spec/README.md](spec/README.md)。
+
 ## 仓库结构
 
 ```
@@ -21,7 +23,7 @@ engine/   程序层：会话管理、生命周期编排、用户相关操作
 host/     通信层：插件链装配与执行、消息与轮次控制、归组注册表、操作日志（隔离带）
 plugins/  插件层：一切数据取自通信层，一切结果汇报给通信层
 tests/    契约级测试（按新契约从零写）
-docs/     技术栈决策（宿主页：FastAPI + websocket / React PWA）
+spec/     规格知识库：代码契约随代码同步维护（见 spec/README.md）
 ```
 
 ## 一期范围
@@ -30,6 +32,17 @@ docs/     技术栈决策（宿主页：FastAPI + websocket / React PWA）
 - 存储：stdlib `sqlite3` 单文件，无 ORM；
 - 送达：缓冲制（回复在 onReply 收尾执行完毕前不对用户展示，之后一次性送达）
 - 信任模型：插件全信任（权限细分二期）
+
+## 运行与配置
+
+```bash
+pip install openai          # llm 插件依赖（OpenAI 协议）
+python main.py              # CLI；GUI 用 python -m gui.server
+```
+
+- 插件配置走插件自己的 manifest：把各插件目录下的 `manifest.example.json` 复制为 `manifest.json` 并填写 `config`（`manifest.json` 已进 .gitignore，密钥不会入库）。llm 的 `api_key` 留空时回退环境变量 `OPENAI_API_KEY` / `OPENAI_BASE_URL`
+- 基础插件集：`prompt`（系统提示词）→ `llm`（OpenAI 协议对话）→ `fs`（文件工具，限定 `data/workspace/`）→ `shell`（命令执行，高危可停用）；工具协作见 [spec/tool-protocol.md](spec/tool-protocol.md)
+- 首次构建自动种子：目标链序、停用演示插件 hello / byebye、`MAX_TURN_COUNT=16`
 
 ## 纪律
 

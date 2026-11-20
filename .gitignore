@@ -3,5 +3,6 @@ __pycache__/
 .pytest_cache/
 data/
 config.json
-plugins/llm/manifest.json
+plugins/*/manifest.json
 .vscode/
+spec/
