@@ -1,0 +1,21 @@
+{
+    "id": "Tram-Plugin-NetworkSearch",
+    "name": "网络搜索",
+    "description": "网络搜索插件（基于 百度 API）",
+    "version": "0.0.1",
+    "entry": {
+        "file": "plugin.py",
+        "factory": "create_plugin"
+    },
+    "methods": [
+        {
+            "lifecycle": "onLoad",
+            "method": "on_load"
+        }
+    ],
+    "config": {
+        "auth": "你的百度 API 密钥",
+        "timeout": 30,
+        "max_output": 8192
+    }
+}

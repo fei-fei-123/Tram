@@ -11,7 +11,7 @@ from shared.config import ConfigDB
 from shared.events import PluginEvent
 
 # 一次性种子的目标链序（目录扫描的字母序不符合需要）
-_SEED_ORDER = ("prompt", "llm", "fs", "shell")
+_SEED_ORDER = ("prompt", "llm", "fs", "shell", "Tram-Plugin-NetworkSearch")
 # 一次性停用的演示插件（hello 每轮强插消息且必续轮，会污染真实会话）
 _SEED_DISABLE = ("hello", "byebye")
 
